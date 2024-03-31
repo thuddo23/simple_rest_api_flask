@@ -2,35 +2,56 @@ import uuid
 from flask import request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
-from db import stores
+from sqlalchemy.exc import SQLAlchemyError
 
-blp = Blueprint("stores", __name__, description="Operations on stores")
+from db import db
+from models import ItemModel
+from schemas import ItemSchema, ItemUpdateSchema
 
-@blp.route("/store/<string:store_id>")
-class Store(MethodView):
-    def get(self, store_id):
+blp = Blueprint("items", __name__, description="Operations on items")
+
+@blp.route("/item/<string:item_id>")
+class Item(MethodView):
+
+    @blp.response(200, ItemSchema)
+    def get(self, item_id):
+        True
+        # if item_id not in items:
+        #     abort(404, message="Item not found")
+        # return items[item_id]
+
+    def delete(self, item_id):
+        True
+        # try:
+        #     del items[item_id]
+        #     return {"message": "Item deleted."}
+        # except KeyError:
+        #     abort(404, message="Item not found.")
+
+    @blp.arguments(ItemUpdateSchema)
+    @blp.response(200, ItemSchema)
+    def put(self, item_data, item_id):
+        True
+        # try:
+        #     item = items[item_id]
+        #     item |= item_data
+        # except KeyError:
+        #     abort(404, message="Item not found. n ")
+
+@blp.route("/item")
+class ItemList(MethodView):
+    # @blp.response(200, ItemSchema(many=True))
+    # def get(self):
+    #     return {"items": list(items.values())}
+
+    @blp.arguments(ItemSchema)
+    @blp.response(201, ItemSchema)
+    def post(self, item_data):
+        item = ItemModel(**item_data)
+
         try:
-            return stores[store_id]
-        except KeyError:
-            abort(404, message="Store not found")
-    def delete(self, store_id):
-        try:
-            del stores[store_id]
-            return {"message": "Store deleted."}
-        except KeyError:
-            abort(404, message="Store not found.")
-
-
-@blp.route("/store")
-class StoreList(MethodView):
-    def get(self):
-        return {"stores": list(stores.values())}
-
-    def post(self):
-        store_data = request.get_json()
-        if "name" not in store_data:
-            abort(400, message="Bad request. missing 'name'!")
-        store_id = uuid.uuid4().hex
-        store = {**store_data, "id": store_id}
-        stores[store_id] = store
-        return store, 201
+            db.session.add(item)
+            db.session.commit()
+        except SQLAlchemyError as e:
+            abort(500, message=f"f, An error occurred while inserting: {e}")
+        return item
